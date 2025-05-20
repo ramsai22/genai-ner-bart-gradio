@@ -4,89 +4,63 @@
 To design and develop a prototype application for Named Entity Recognition (NER) by leveraging a fine-tuned BART model and deploying the application using the Gradio framework for user interaction and evaluation.
 
 ### PROBLEM STATEMENT:
-The challenge is to build an NER system capable of identifying named entities (e.g., people, organizations, locations) in text, using a pre-trained BART model fine-tuned for this task. The system should be interactive, allowing users to input text and see the recognized entities in real-time.
+Named Entity Recognition (NER) is a fundamental task in Natural Language Processing (NLP) that involves identifying and classifying key entities like names, organizations, locations, and dates in a given text. The goal of this project is to create a user-friendly NER tool that integrates a fine-tuned BART model to demonstrate state-of-the-art capabilities in recognizing entities from textual data.
 ### DESIGN STEPS:
+### STEP 1: Data Collection and Preprocessing
+Collect a labeled dataset for NER tasks. Common datasets include CoNLL-2003, OntoNotes, or a custom dataset.
+Download or create a dataset with entities labeled in BIO format (Begin, Inside, Outside).
+Preprocess the text data, tokenizing it for compatibility with BART.
+Split the data into training, validation, and testing sets.
+### STEP 2: Fine-Tuning the BART Model
+Use the Hugging Face transformers library.
+Load a pre-trained BART model (facebook/bart-base or similar).
+Modify the model for token classification by adding a classification head.
+Train the model on the preprocessed dataset using a suitable optimizer and scheduler.
+### STEP 3: Model Evaluation
+Use metrics like F1-score, precision, and recall for evaluation.
+Test the model on unseen data and analyze its performance on different entity types.
+### STEP 4: Application Development Using Gradio
+Design the interface with Gradio to allow users to input text and view extracted entities.
+Integrate the fine-tuned BART model into the Gradio app.
+Define a backend function that processes user input through the model and displays the results.
+### STEP 5: Deployment and Testing
+Host the application on a cloud platform like Hugging Face Spaces or Google Colab.
+Collect user feedback to improve usability and performance.
 
-#### STEP 1: Fine-tune the BART model
-Start by fine-tuning the BART model for NER tasks. This involves training the model on a labeled NER dataset with text data that contains named entities (e.g., people, places, organizations).
-
-#### STEP 2: Create an API for NER model inference
-Develop an API endpoint that takes input text and returns the recognized entities using the fine-tuned BART model.
-
-#### STEP 3: Integrate the API with Gradio
-Build a Gradio interface that takes user input, passes it to the NER model via the API, and displays the results as highlighted text with identified entities.
 
 ### PROGRAM:
-```py
-import os
-import io
-from IPython.display import Image, display, HTML
-from PIL import Image
-import base64 
-from dotenv import load_dotenv, find_dotenv
-import requests
-import json
+```
+from transformers import AutoTokenizer, AutoModelForTokenClassification
+from transformers import pipeline
 import gradio as gr
 
-# Load environment variables
-_ = load_dotenv(find_dotenv())  # Read local .env file
-hf_api_key = os.environ['HF_API_KEY']
-API_URL = os.environ['HF_API_SUMMARY_BASE']  # Ensure the API URL is correct
+# Load pre-trained BERT NER model and tokenizer
+model_name = "dbmdz/bert-large-cased-finetuned-conll03-english"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForTokenClassification.from_pretrained(model_name)
 
-# Helper function to send API requests
-def get_completion(inputs, parameters=None, ENDPOINT_URL=API_URL): 
-    headers = {
-        "Authorization": f"Bearer {hf_api_key}",
-        "Content-Type": "application/json"
-    }
-    data = {"inputs": inputs}
-    if parameters is not None:
-        data.update({"parameters": parameters})
-    response = requests.post(ENDPOINT_URL, headers=headers, data=json.dumps(data))
-    return json.loads(response.content.decode("utf-8"))
+# Create a pipeline for NER
+ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
 
-# Function to merge subword tokens (e.g., "San" and "Francisco" into "San Francisco")
-def merge_tokens(tokens):
-    merged_tokens = []
-    for token in tokens:
-        if merged_tokens and token['entity'].startswith('I-') and merged_tokens[-1]['entity'].endswith(token['entity'][2:]):
-            # Merge the token if it's part of the same entity
-            last_token = merged_tokens[-1]
-            last_token['word'] += token['word'].replace('##', '')
-            last_token['end'] = token['end']
-            last_token['score'] = (last_token['score'] + token['score']) / 2
-        else:
-            # Add new token to the list
-            merged_tokens.append(token)
-    return merged_tokens
+# Function to process user input
+def ner_function(text):
+    entities = ner_pipeline(text)
+    return "\n".join([f"{ent['word']} ({ent['entity']})" for ent in entities])
 
-# NER function to process input and call the API
-def ner(input):
-    output = get_completion(input, parameters=None, ENDPOINT_URL=API_URL)
-    merged_tokens = merge_tokens(output)
-    return {"text": input, "entities": merged_tokens}
-
-# Initialize Gradio interface
-gr.close_all()
-demo = gr.Interface(
-    fn=ner,
-    inputs=[gr.Textbox(label="Text to find entities", lines=2)],
-    outputs=[gr.HighlightedText(label="Text with entities")],
-    title="NER with dslim/bert-base-NER",
-    description="Find entities using the `dslim/bert-base-NER` model under the hood!",
-    allow_flagging="never",
-    examples=[
-        "My name is Andrew, I'm building DeeplearningAI and I live in California",
-        "My name is Poli, I live in Vienna and work at HuggingFace"
-    ]
+# Gradio Interface
+iface = gr.Interface(
+    fn=ner_function,
+    inputs=gr.Textbox(lines=5, label="Input Text"),
+    outputs=gr.Textbox(lines=10, label="Named Entities"),
+    title="NER Demo with Pre-trained Model"
 )
 
-# Launch the Gradio interface
-demo.launch()
-
+iface.launch()
 ```
 ### OUTPUT:
-![Screenshot 2025-05-14 203920](https://github.com/user-attachments/assets/be6a5e5b-1f50-407c-9733-3cac6ecf8d13)
+![Image](https://github.com/user-attachments/assets/ed280264-ec9e-4550-90da-4736ea38c7fd)
 
 ### RESULT:
-Thus, the developed an NER prototype application with user interaction and evaluation features, using a fine-tuned BART model deployed through the Gradio framework.
+Successfully a prototype application for Named Entity Recognition (NER) by leveraging a fine-tuned BART model and deploying the application using the Gradio framework for user interaction and evaluation.
+
+
